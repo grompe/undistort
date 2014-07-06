@@ -10,7 +10,7 @@ Required tools:
 
 How to use:
 - Edit path to ImageMagick **convert** program in **undistort_gui.py**
-- Run **undistort_gui.py** <image_filename> <output_filename>
+- Run **undistort_gui.py** \<image_filename\> \<output_filename\>
   (your default browser will open with image correction interface)
 - **Drag** with mouse to move and **Shift+drag** to rotate guidelines
 - Mark the distorted rectangle and press **Fix** button
