@@ -17,5 +17,14 @@ How to use:
 - Change output image width, height and/or aspect ratio
 - Press **Fix** button
 
-
 Released for public domain by Grom PE.
+
+
+example
+=======
+
+![Undistort.py example: "Trust my Rage" by Dae-Thalin](http://i.imgur.com/Bfy1PLa.jpg)
+
+![Undistort.py example result: "Trust my Rage" by Dae-Thalin](http://i.imgur.com/ESAtQqR.jpg)
+
+Image ["Trust my Rage"](http://dae-thalin.deviantart.com/art/Trust-my-Rage-439926102) (c) [Dae-Thalin](http://dae-thalin.deviantart.com/), used with permission
