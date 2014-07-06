@@ -1,0 +1,297 @@
+<!DOCTYPE html><title>Undistort GUI</title>
+<style>
+body {
+  margin: 0;
+  background: #444;
+}
+#t {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 24px;
+  background: #ccc;
+  z-index: 3;
+  padding: 2px;
+  border: 1px solid #666;
+}
+#c {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  bottom: 0;
+  -overflow: auto;
+}
+#f {
+  display: inline;
+}
+#i {
+  position: absolute;
+  display: block;
+  z-index: 1;
+}
+#s {
+  position: absolute;
+  z-index: 2;
+}
+#s line {
+  stroke-width: 2;
+}
+#s line.clickable {
+  stroke: black;
+  opacity: 0.1;
+  stroke-width: 4;
+  cursor: pointer;
+}
+#s line.clickable:hover {
+  opacity: 0.01;
+  stroke-width: 10;
+}
+input[type="number"] {
+  width: 60px;
+  text-align: right;
+}
+</style>
+<body>
+  <div id="t">
+    Overscroll: <input id="ino" type="number" units="px" step="100" value="100">
+    Output width: <input id="inw" type="number" value="1024">
+    Output height: <input id="inh" type="number" value="768">
+    Aspect ratio: <input id="ina" type="number" value="1.333" step="0.001">
+    <form id="f" action="/doit" method="GET">
+      <input type="hidden" id="p" name="p" value="">
+      <input id="fix" type="submit" value="Fix">
+    </form>
+  </div>
+  <div id="c">
+    <svg id="s">
+      <line id="lt" stroke="#f00"/>
+      <line id="lb" stroke="#f50"/>
+      <line id="ll" stroke="#ff0"/>
+      <line id="lr" stroke="#5f0"/>
+      <line id="ltc" class="clickable"/>
+      <line id="lbc" class="clickable"/>
+      <line id="llc" class="clickable"/>
+      <line id="lrc" class="clickable"/>
+    </svg>
+    <img id="i" src="image">
+  </div>
+</body>
+<script>
+  $ = function(n){return document.getElementById(n)};
+  var overscroll = 100, aspect_ratio, out_width, out_height;
+  var iw, ih, sw, sh;
+
+  function setup()
+  {
+    $("i").style.marginTop = overscroll + 'px';
+    $("i").style.marginLeft = overscroll + 'px';
+    $("i").style.paddingRight = overscroll + 'px';
+    $("i").style.paddingBottom = overscroll + 'px';
+    
+    iw = $("i").width;
+    ih = $("i").height;
+    sw = iw + overscroll * 2;
+    sh = ih + overscroll * 2;
+    $("s").setAttribute("width", sw);
+    $("s").setAttribute("height", sh);
+    window.scrollTo(
+      overscroll + iw / 2 - window.innerWidth / 2,
+      overscroll + ih / 2 + 30 - window.innerHeight / 2
+    );
+    $("c").scrollLeft = overscroll + iw / 2 - $("c").clientWidth / 2,
+    $("c").scrollTop = overscroll + ih / 2 - $("c").clientHeight / 2
+  }
+
+  function defaults()
+  {
+    out_width = iw;
+    out_height = ih;
+    aspect_ratio = Math.floor(iw / ih * 1000) / 1000;
+    if (iw > ih)
+    {
+      out_height = Math.floor(out_width / aspect_ratio + 0.5);
+    } else {
+      out_width = Math.floor(out_height * aspect_ratio + 0.5);
+    }
+    $("ino").value = overscroll;
+    $("ina").value = aspect_ratio;
+    $("inw").value = out_width;
+    $("inh").value = out_height;
+    setGuide("lt", overscroll + 100, overscroll + 60, -6.4 * Math.PI / 180);
+    setGuide("lb", overscroll + 100, overscroll + 725, -15.7 * Math.PI / 180);
+    setGuide("ll", overscroll - 48,  overscroll + 0, 82.8 * Math.PI / 180);
+    setGuide("lr", overscroll + 753, overscroll + 1, 68.9 * Math.PI / 180);
+  }
+
+  function setLine(id, x1, y1, x2, y2)
+  {
+    var line = $(id);
+    var line_clickable = $(id + "c");
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+    line_clickable.setAttribute("x1", x1);
+    line_clickable.setAttribute("y1", y1);
+    line_clickable.setAttribute("x2", x2);
+    line_clickable.setAttribute("y2", y2);
+  }
+
+  function shiftLine(id, x, y)
+  {
+    var line = $(id);
+    var x1 = parseInt(line.getAttribute("x1"), 10);
+    var y1 = parseInt(line.getAttribute("y1"), 10);
+    var x2 = parseInt(line.getAttribute("x2"), 10);
+    var y2 = parseInt(line.getAttribute("y2"), 10);
+    setLine(id, x1 + x, y1 + y, x2 + x, y2 + y);
+  }
+
+  function shiftLines(shift)
+  {
+    var lines = ["lt", "lb", "ll", "lr"];
+    for (var i = 0; i < lines.length; i++)
+    {
+      shiftLine(lines[i], shift, shift);
+    }
+  }
+
+  function addLinesMouseDown(fn)
+  {
+    var lines = ["ltc", "lbc", "llc", "lrc"];
+    for (var i = 0; i < lines.length; i++)
+    {
+      $(lines[i]).addEventListener("mousedown", fn, false);
+    }
+  }
+  function setGuide(id, x, y, angle)
+  {
+    var x1, y1;
+    var x2, y2;
+    var goodlength = overscroll * 2 + iw + ih;
+    x1 = x + (- goodlength) * Math.cos(angle);
+    y1 = y + (- goodlength) * Math.sin(angle);
+    x2 = x + (+ goodlength) * Math.cos(angle);
+    y2 = y + (+ goodlength) * Math.sin(angle);
+    setLine(id, x1, y1, x2, y2);
+  }
+
+  function guideIntersect(a_id, b_id)
+  {
+    var a_line = $(a_id);
+    var b_line = $(b_id);
+    var a_x1 = a_line.getAttribute("x1");
+    var a_y1 = a_line.getAttribute("y1");
+    var a_x2 = a_line.getAttribute("x2");
+    var a_y2 = a_line.getAttribute("y2");
+    var b_x1 = b_line.getAttribute("x1");
+    var b_y1 = b_line.getAttribute("y1");
+    var b_x2 = b_line.getAttribute("x2");
+    var b_y2 = b_line.getAttribute("y2");
+    
+    var a = a_x2 - a_x1;
+    var b = a_y1 - a_y2;
+    var c = (a_x1 - a_x2) * a_y1 + (a_y2 - a_y1) * a_x1;
+
+    var p = b_x2 - b_x1;
+    var q = b_y1 - b_y2;
+    var r = (b_x1 - b_x2) * b_y1 + (b_y2 - b_y1) * b_x1;
+
+    var x = (a * r - p * c) / (p * b - a * q);
+    var y = - (b * x + c) / a;
+
+    return [Math.floor(x + 0.5) - overscroll, Math.floor(y + 0.5) - overscroll];
+  }
+
+  window.onload = function()
+  {
+    setup();
+    defaults();
+
+    $("ino").onchange = function(e)
+    {
+      var val = parseInt($("ino").value, 10);
+      if (isNaN(val)) return;
+      shiftLines(val - overscroll);
+      overscroll = val;
+      setup();
+    };
+    $("ina").onchange = function(e)
+    {
+      var val = parseFloat($("ina").value);
+      if (isNaN(val)) return;
+      aspect_ratio = val;
+      out_height = Math.floor(out_width / aspect_ratio + 0.5);
+      $("inh").value = out_height;
+
+    }
+    $("inw").onchange = function(e)
+    {
+      var val = parseInt($("inw").value, 10);
+      if (isNaN(val)) return;
+      out_width = val;
+      out_height = Math.floor(out_width / aspect_ratio + 0.5);
+      $("inh").value = out_height;
+    }
+    $("inh").onchange = function(e)
+    {
+      var val = parseInt($("inh").value, 10);
+      if (isNaN(val)) return;
+      out_height = val;
+      aspect_ratio = Math.floor(out_width / out_height * 1000) /1000;
+      $("ina").value = aspect_ratio;
+    }
+    var startX, startY, dragLine, rotateMode;
+    var lineMouseMove = function(e)
+    {
+      var x = e.pageX - $("c").offsetLeft;
+      var y = e.pageY - $("c").offsetTop;
+      var realid = dragLine.id.substr(0, 2);
+      if (rotateMode)
+      {
+        setGuide(realid, startX, startY, Math.atan2(y - startY, x - startX));
+      } else {
+        shiftLine(realid, x - startX, y - startY);
+        startX = x;
+        startY = y;
+      }
+    };
+    var lineMouseUp = function(e)
+    {
+      window.removeEventListener("mouseup", lineMouseUp, false);
+      window.removeEventListener("mousemove", lineMouseMove, false);
+    };
+    var lineMouseDown = function(e)
+    {
+      if (e.button == 0)
+      {
+        e.preventDefault();
+        rotateMode = e.shiftKey;
+        dragLine = e.target;
+        startX = e.pageX - $("c").offsetLeft;
+        startY = e.pageY - $("c").offsetTop;
+        window.addEventListener("mouseup", lineMouseUp, false);
+        window.addEventListener("mousemove", lineMouseMove, false);
+      }
+    };
+    addLinesMouseDown(lineMouseDown);
+
+    $("fix").onclick = function(e)
+    {
+      var point1 = guideIntersect("lt", "ll");
+      var point2 = guideIntersect("lt", "lr");
+      var point3 = guideIntersect("lb", "ll");
+      var point4 = guideIntersect("lb", "lr");
+      var param = [
+        point1[0], point1[1], 0, 0,
+        point2[0], point2[1], out_width, 0,
+        point3[0], point3[1], 0, out_height,
+        point4[0], point4[1], out_width, out_height,
+      ].join(",");
+      $("p").value = param;
+    };
+
+  };
+</script>
